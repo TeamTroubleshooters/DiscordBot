@@ -7,6 +7,7 @@ import { REST } from "@discordjs/rest";
 // import slash commands
 import sayCommand from "./commands/say.js";
 import pingCommand from "./commands/ping.js";
+import insultCommand from "./commands/insult.js";
 
 // load environment variables
 config();
@@ -42,6 +43,14 @@ client.on("interactionCreate", async (interaction) => {
     const input = interaction.options.getString("input");
     await interaction.reply({ content: input });
   }
+  if (commandName === "insult") {
+    const user = interaction.options.getUser("user");
+    const insult = await fetch(
+      "https://evilinsult.com/generate_insult.php?lang=en&type=json"
+    );
+    const { insult: text } = await insult.json();
+    await interaction.reply({ content: `${user} ${text}` });
+  }
 });
 
 async function main() {
@@ -49,6 +58,7 @@ async function main() {
   const commands = [
     pingCommand,
     sayCommand,
+    insultCommand,
     // more commands here
   ];
   try {
