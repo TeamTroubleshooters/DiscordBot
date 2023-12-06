@@ -22,7 +22,12 @@ client.on("interactionCreate", async (interaction) => {
   const { commandName } = interaction;
 
   if (commandName === "ping") {
-    await interaction.reply("Pong!");
+    const message = await interaction.reply({ content: "Pinging..." });
+    await message.edit(`Pong! check **${client.ws.ping} ms**`);
+  }
+  if (commandName === "say") {
+    const input = interaction.options.getString("input");
+    await interaction.reply({ content: input });
   }
 });
 
@@ -31,6 +36,18 @@ async function main() {
     {
       name: "ping",
       description: "Replies with Pong!",
+    },
+    {
+      name: "say",
+      description: "Replies with your input!",
+      options: [
+        {
+          name: "input",
+          type: 3,
+          description: "The input to echo back",
+          required: true,
+        },
+      ],
     },
   ];
   try {
