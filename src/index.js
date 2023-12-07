@@ -1,13 +1,9 @@
 // Purpose: Main file of the bot
-
-import { Client, GatewayIntentBits, Routes } from "discord.js";
-import { config } from "dotenv";
-import { REST } from "@discordjs/rest";
-
-// import slash commands
-import sayCommand from "./commands/say.js";
-import pingCommand from "./commands/ping.js";
-import insultCommand from "./commands/insult.js";
+const fs = require("fs");
+const path = require("path");
+const { Client, GatewayIntentBits, Routes, Collection } = require("discord.js");
+const { config } = require("dotenv");
+const { REST } = require("@discordjs/rest");
 
 // load environment variables
 config();
@@ -20,59 +16,66 @@ const client = new Client({
 // create a new rest client
 const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
 
-// log when bot is ready
-client.on("ready", (c) => console.log(`Logged in as ${c.user.tag}!`));
+const commands = [];
 
-// log when a message is sent
-client.on("messageCreate", (message) =>
-  console.log(message.author.username, message.guild.name)
-);
+client.commands = new Collection();
+const foldersPath = path.join(__dirname, "commands");
+const commandFolders = fs.readdirSync(foldersPath);
 
-// handle slash commands
-client.on("interactionCreate", async (interaction) => {
-  // if not a command, return
-  if (!interaction.isCommand()) return;
+for (const folder of commandFolders) {
+  const commandsPath = path.join(foldersPath, folder);
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter((file) => file.endsWith(".js"));
+  for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ("data" in command && "execute" in command) {
+      commands.push(command.data.toJSON());
+      client.commands.set(command.data.name, command);
+    } else {
+      console.log(
+        `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`
+      );
+    }
+  }
+}
 
-  const { commandName } = interaction;
-  // handle commands
-  if (commandName === "ping") {
-    const message = await interaction.reply({ content: "Pinging..." });
-    await message.edit(`Pong! check **${client.ws.ping} ms**`);
+// load events
+const eventsPath = path.join(__dirname, "events");
+const eventFiles = fs
+  .readdirSync(eventsPath)
+  .filter((file) => file.endsWith(".js"));
+
+for (const file of eventFiles) {
+  const filePath = path.join(eventsPath, file);
+  const event = require(filePath);
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args));
   }
-  if (commandName === "say") {
-    const input = interaction.options.getString("input");
-    await interaction.reply({ content: input });
-  }
-  if (commandName === "insult") {
-    const user = interaction.options.getUser("user");
-    const insult = await fetch(
-      "https://evilinsult.com/generate_insult.php?lang=en&type=json"
-    );
-    const { insult: text } = await insult.json();
-    await interaction.reply({ content: `${user} ${text}` });
-  }
-});
+}
 
 async function main() {
   // register slash commands
-  const commands = [
-    pingCommand,
-    sayCommand,
-    insultCommand,
-    // more commands here
-  ];
   try {
-    console.log("Started refreshing application (/) commands.");
+    console.log(
+      `Started refreshing ${commands.length} application (/) commands.`
+    );
 
     // use this if you want to register commands globally
 
-    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
-      body: commands,
-    });
+    const data = await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      {
+        body: commands,
+      }
+    );
 
     // use this if you want to register commands in a guild
 
-    // await rest.put(
+    // const data = await rest.put(
     //   Routes.applicationGuildCommands(
     //     process.env.CLIENT_ID,
     //     process.env.GUILD_ID
@@ -81,11 +84,13 @@ async function main() {
     //     body: commands,
     //   }
     // );
-
-    client.login(process.env.BOT_TOKEN); // login to discord
+    console.log(
+      `Successfully reloaded ${data.length} application (/) commands.`
+    );
   } catch (error) {
     console.error(error);
   }
 }
+client.login(process.env.BOT_TOKEN); // login to discord
 
 main();
