@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { roast } = require("../../assets/roast.json");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,10 +13,7 @@ module.exports = {
     ),
   async execute(interaction) {
     const user = interaction.options.getUser("user");
-    const insult = await fetch(
-      "https://evilinsult.com/generate_insult.php?lang=en&type=json"
-    );
-    const { insult: text } = await insult.json();
-    await interaction.reply({ content: `${user} ${text}` });
+    const insult = roast[Math.floor(Math.random() * roast.length)];
+    await interaction.reply({ content: `${user} ${insult}` });
   },
 };
