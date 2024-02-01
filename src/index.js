@@ -56,7 +56,7 @@ for (const file of eventFiles) {
     client.on(event.name, (...args) => event.execute(...args));
   }
 }
-
+// add test comment to merge github
 async function main() {
   // register slash commands
   try {
